@@ -97,6 +97,10 @@ void init_timer_2(void)
 	GPIOB->MODER |= GPIO_MODER_MODER10_1; //setting 21st bit of moder10
 	GPIOB->AFR[1] |= 0b1000000000; //alt func set so pb10 is connected to tim2 channel 3 internally- set afr to af1
 
+	//setup for 75% duty cycle
+	GPIOB->MODER |= GPIO_MODER_MODER11_1; //setting 21st bit of moder10
+    GPIOB->AFR[1] |= 0b1000000000; //set to alt func mode
+
 	//setup for 15khz
 	TIM2->PSC = 3;
 	TIM2->ARR = 1023; //made to be equal to max adc value for 100% dc
@@ -111,6 +115,10 @@ void init_timer_2(void)
 
 	//setup to read in adc value set by pot
 	TIM2->CCR3 = adc_result;
+
+	//for 0.75 duty cycle
+	TIM2->CCR4 = 0.75*1023;
+
 
 
 }
