@@ -23,6 +23,9 @@
 void main(void);                                                   //COMPULSORY
 void init_ADC(void);
 void init_timer_2(void);	//COMPULSORY
+//volatile uint16_t counter = 0;
+uint8_t adc_result = 0;
+
 #ifdef TRUESTUDIO												   //COMPULSORY
 	void reset_clock_to_48Mhz(void);							   //COMPULSORY
 #endif															   //COMPULSORY
@@ -30,7 +33,6 @@ void init_timer_2(void);	//COMPULSORY
 
 
 // MAIN FUNCTION -------------------------------------------------------------|
-
 void main(void)
 {
 #ifdef TRUESTUDIO  											 	   //COMPULSORY
@@ -83,8 +85,8 @@ void init_ADC(void)
 	// Setup in wait mode
 	ADC1->CFGR1 |= ADC_CFGR1_WAIT;
 	// Setup 10 bit resolution
-
-	//
+	ADC1->CFGR1 |= ADC_CFGR1_RES_0;
+   //
 	while((ADC1->ISR & ADC_ISR_ADRDY) == 0);
 }
 
@@ -96,8 +98,8 @@ void init_timer_2(void)
 	GPIOB->AFR[1] |= 0b1000000000; //alt func set so pb10 is connected to tim2 channel 3 internally- set afr to af1
 
 	//setup for 15khz
-	TIM2->PSC = 0;
-	TIM2->ARR = 3200; //counting @ rate of syst clk bc psc = 0
+	TIM2->PSC = 3;
+	TIM2->ARR = 1023; //made to be equal to max adc value for 100% dc
 
 	//conifgure for pwm
 	TIM2->CCMR2 |= TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1       //cc3 and 4 found in ccmr2
@@ -107,21 +109,32 @@ void init_timer_2(void)
 	//enable the timer
 	TIM2->CR1 |= TIM_CR1_CEN;
 
-	//setup a duty cycle of 25% - falling edges (CRR), risng edges (ARR) - duty cycle starts with overflow
-	TIM2->CCR3 = 3200/4; //0.25period (period is ARR)
+	//setup to read in adc value set by pot
+	TIM2->CCR3 = adc_result;
 
 
 }
 
 void init_timer_6(void)
 {
+	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN; //enable tim6
+	//calc using delay length - therefore setting delay up
+	TIM6->PSC = 36;
+	TIM6->ARR = 66667;
+	//allow overflow interrupts
+	TIM6->DIER |= TIM_DIER_UIE;
+	//enable counter for tim6
+	TIM6->CR1 |= TIM_CR1_CEN;
 	NVIC_Enable(TIM6_DAC_IRQn);
-
 }
 
 // INTERRUPT HANDLERS --------------------------------------------------------|
 
 void TIM6_DAC_IRQHandler(void)
 {
+	uint8_t adc_result = 0;
+	//read in &store adc value (set by pot)
+	adc_result = ADC1->DR;
 	TIM6->SR &= ~TIM_SR_UIF;	//acknowledge interrupt
+
 }
